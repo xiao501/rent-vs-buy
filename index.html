@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>買房還是租房</title>
+<meta name="description" content="雙薪有小孩家庭的買租成本試算，結果可複製給 AI 繼續討論。">
+<meta name="theme-color" content="#2f5d50">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="買租試算">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <h1>買房還是租房</h1>
+  <div class="scenario-bar">
+    <label for="scenario" class="sr-only">試算組合</label>
+    <select id="scenario"></select>
+    <button type="button" id="scenario-new" class="ghost">新增</button>
+    <button type="button" id="scenario-rename" class="ghost">改名</button>
+    <button type="button" id="scenario-delete" class="ghost danger">刪除</button>
+  </div>
+</header>
+
+<main>
+  <!-- 功能一：買房輸入 -->
+  <section class="card">
+    <h2>買房</h2>
+    <div class="grid">
+      <label class="field">
+        <span>房屋總價 <em>必填</em></span>
+        <div class="input-unit"><input id="price" type="number" inputmode="decimal" min="0" step="any" data-key="price"><b>萬元</b></div>
+      </label>
+      <label class="field">
+        <span>坪數 <em>選填</em></span>
+        <div class="input-unit"><input id="ping" type="number" inputmode="decimal" min="0" step="any" data-key="ping"><b>坪</b></div>
+        <small id="unit-price" class="hint"></small>
+      </label>
+      <label class="field">
+        <span>自備款比例</span>
+        <div class="input-unit"><input id="downPct" type="number" inputmode="decimal" min="0" max="100" step="any"><b>%</b></div>
+      </label>
+      <label class="field">
+        <span>自備款金額</span>
+        <div class="input-unit"><input id="downAmt" type="number" inputmode="decimal" min="0" step="any"><b>萬元</b></div>
+      </label>
+      <div class="field full">
+        <label for="rate"><span>房貸利率</span></label>
+        <div class="input-unit"><input id="rate" type="number" inputmode="decimal" min="0" step="0.001"><b>%／年</b></div>
+        <div class="auto-line">
+          <span id="rate-badge" class="badge"></span>
+          <span id="rate-src" class="hint"></span>
+          <button type="button" id="rate-reset" class="link" hidden>恢復自動值</button>
+        </div>
+        <details class="explain">
+          <summary>這個利率怎麼來的？</summary>
+          <p>這是五大銀行新承做購屋貸款的平均利率。台灣房貸多為指數型利率（銀行基準利率＋加碼），會隨央行升降息浮動，你實際拿到的利率以銀行核貸為準。</p>
+        </details>
+      </div>
+      <label class="field">
+        <span>貸款年限</span>
+        <select id="years" data-key="years">
+          <option value="20">20 年</option>
+          <option value="30">30 年</option>
+          <option value="40">40 年</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>寬限期</span>
+        <div class="input-unit"><input id="grace" type="number" inputmode="numeric" min="0" max="5" step="1" data-key="grace"><b>年</b></div>
+        <small class="hint">寬限期內只繳利息</small>
+      </label>
+      <label class="field">
+        <span>每月管理費 <em>選填</em></span>
+        <div class="input-unit"><input id="buyFee" type="number" inputmode="numeric" min="0" step="1" data-key="buyFee"><b>元</b></div>
+      </label>
+    </div>
+  </section>
+
+  <!-- 功能一：租房輸入 -->
+  <section class="card">
+    <h2>租房</h2>
+    <div class="grid">
+      <label class="field">
+        <span>縣市</span>
+        <select id="county" data-key="county"></select>
+      </label>
+      <label class="field">
+        <span>行政區</span>
+        <select id="district" data-key="district"></select>
+      </label>
+      <label class="field">
+        <span>房數</span>
+        <select id="rooms" data-key="rooms">
+          <option value="1">1 房</option>
+          <option value="2">2 房</option>
+          <option value="3">3 房</option>
+          <option value="4">4 房以上</option>
+        </select>
+      </label>
+      <div class="field full">
+        <label for="rent"><span>月租金</span></label>
+        <div class="input-unit"><input id="rent" type="number" inputmode="numeric" min="0" step="1"><b>元</b></div>
+        <div class="auto-line">
+          <span id="rent-badge" class="badge"></span>
+          <span id="rent-src" class="hint"></span>
+          <button type="button" id="rent-reset" class="link" hidden>恢復自動值</button>
+        </div>
+        <p id="rent-warn" class="warn" hidden></p>
+      </div>
+      <label class="field">
+        <span>每月管理費 <em>選填</em></span>
+        <div class="input-unit"><input id="rentFee" type="number" inputmode="numeric" min="0" step="1" data-key="rentFee"><b>元</b></div>
+      </label>
+    </div>
+  </section>
+
+  <!-- 功能一：輸出 -->
+  <section class="card result" aria-live="polite">
+    <h2>試算結果</h2>
+    <div id="result-empty" class="hint">填入房屋總價就會開始計算。</div>
+    <div id="result" hidden>
+      <dl class="stats">
+        <div><dt>頭期款（自備款）</dt><dd id="r-down"></dd></div>
+        <div><dt>貸款金額</dt><dd id="r-loan"></dd></div>
+        <div id="r-grace-wrap"><dt>寬限期內月付</dt><dd id="r-grace"></dd></div>
+        <div><dt id="r-pay-label">房貸月付</dt><dd id="r-pay"></dd></div>
+      </dl>
+
+      <div class="compare">
+        <div class="col buy">
+          <h3>買房每月</h3>
+          <p class="big" id="r-buy-total"></p>
+          <p class="hint" id="r-buy-detail"></p>
+        </div>
+        <div class="col rent">
+          <h3>租房每月</h3>
+          <p class="big" id="r-rent-total"></p>
+          <p class="hint" id="r-rent-detail"></p>
+        </div>
+      </div>
+      <p class="diff" id="r-diff"></p>
+
+      <div class="split">
+        <h3 id="r-split-title">月付裡的本金與利息</h3>
+        <div class="bar" role="img" id="r-bar"><span class="principal" id="r-bar-p"></span><span class="interest" id="r-bar-i"></span></div>
+        <div class="legend">
+          <span><i class="dot principal"></i>本金 <b id="r-principal"></b></span>
+          <span><i class="dot interest"></i>利息 <b id="r-interest"></b></span>
+        </div>
+      </div>
+      <p class="disclaimer">估算值，實際以銀行核貸為準。</p>
+    </div>
+  </section>
+
+  <!-- 功能三：生活情境 -->
+  <section class="card">
+    <h2>生活情境</h2>
+    <p class="hint">這一區所有試算組合共用，因為是同一個家庭。</p>
+    <div class="grid">
+      <label class="field">
+        <span>打算住幾年</span>
+        <div class="input-unit"><input type="number" inputmode="numeric" min="0" step="1" data-life="stayYears"><b>年</b></div>
+      </label>
+      <label class="field">
+        <span>目前家庭人數</span>
+        <div class="input-unit"><input type="number" inputmode="numeric" min="1" step="1" data-life="members"><b>人</b></div>
+      </label>
+      <label class="field">
+        <span>預計增加成員</span>
+        <select data-life="growth">
+          <option value="no">否</option>
+          <option value="yes">是</option>
+        </select>
+      </label>
+      <label class="field" id="growth-count-wrap">
+        <span>預計增加幾人</span>
+        <div class="input-unit"><input type="number" inputmode="numeric" min="1" step="1" data-life="growthCount"><b>人</b></div>
+      </label>
+    </div>
+
+    <h3 class="sub">小孩</h3>
+    <div id="kids"></div>
+    <button type="button" id="kid-add" class="ghost">＋ 新增小孩</button>
+
+    <h3 class="sub">寵物</h3>
+    <div id="pets"></div>
+    <button type="button" id="pet-add" class="ghost">＋ 新增寵物</button>
+
+    <div class="grid">
+      <label class="field">
+        <span>是否需要在家工作</span>
+        <select data-life="wfh">
+          <option value="no">否</option>
+          <option value="yes">是</option>
+        </select>
+      </label>
+      <label class="field" id="study-wrap">
+        <span>需要獨立書房</span>
+        <select data-life="study">
+          <option value="no">不需要</option>
+          <option value="yes">需要</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>現在需要幾房</span>
+        <div class="input-unit"><input type="number" inputmode="numeric" min="1" step="1" id="roomsNow"><b>房</b></div>
+        <small class="hint" id="roomsNow-hint"></small>
+      </label>
+      <label class="field">
+        <span>未來需要幾房</span>
+        <div class="input-unit"><input type="number" inputmode="numeric" min="1" step="1" id="roomsFuture"><b>房</b></div>
+        <small class="hint" id="roomsFuture-hint"></small>
+      </label>
+    </div>
+
+    <h3 class="sub">在意的事</h3>
+    <div class="chips" id="concerns"></div>
+    <label class="field full">
+      <span>其他在意的事</span>
+      <textarea rows="2" data-life="concernOther" placeholder="例如：離公婆家近、希望有電梯"></textarea>
+    </label>
+  </section>
+
+  <!-- 功能三：產生訊息 -->
+  <section class="card">
+    <h2>給 AI 的討論訊息</h2>
+    <p class="hint">可以直接修改下面的文字，再按複製貼到 Claude。</p>
+    <textarea id="message" rows="14"></textarea>
+    <div class="actions">
+      <button type="button" id="copy" class="primary">複製訊息</button>
+      <button type="button" id="regen" class="ghost">重新產生</button>
+      <span id="copied" class="toast" hidden>已複製</span>
+    </div>
+    <p id="msg-edited" class="hint" hidden>你修改過這段文字；上面的數字改變時不會自動覆蓋，按「重新產生」才會更新。</p>
+  </section>
+
+  <section class="card quiet">
+    <h2>我的資料</h2>
+    <p class="hint">所有輸入只存在這支手機的瀏覽器裡，不會上傳到任何地方。</p>
+    <button type="button" id="clear" class="ghost danger">清除我的資料</button>
+  </section>
+</main>
+
+<footer class="foot">
+  <p>資料來源：<a href="https://plvr.land.moi.gov.tw/DownloadOpenData" target="_blank" rel="noopener">內政部實價登錄</a>・<a href="https://www.cbc.gov.tw/tw/cp-528-1079-B4682-1.html" target="_blank" rel="noopener">中央銀行</a>。每月更新一次。</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
